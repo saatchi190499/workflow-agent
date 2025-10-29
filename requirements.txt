@@ -4,3 +4,5 @@ pydantic
 pywin32
 numpy
 pandas
+requests
+requests_kerberos
