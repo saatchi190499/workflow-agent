@@ -1,7 +1,8 @@
 from PyInstaller.utils.hooks import collect_submodules, collect_all
 
-# Собираем всё из petex_client (модули/данные/ресурсы)
-pkgs_to_collect = ["petex_client"]
+# Собираем всё из зависимостей, которые могут импортироваться динамически
+# (petex_client/pi_client подгружаются через RemoteModuleFinder)
+pkgs_to_collect = ["petex_client", "pandas", "numpy"]
 datas, binaries, hiddenimports = [], [], []
 for pkg in pkgs_to_collect:
     da, bi, hi = collect_all(pkg)
@@ -15,7 +16,7 @@ hiddenimports += ["pythoncom", "main"]  # 'main' обязательно, т.к. 
 
 block_cipher = None
 
-a = Analysis(
+a_app = Analysis(
     ["run.py"],                  # точка входа — ваш run.py
     pathex=[],
     binaries=binaries,
@@ -27,14 +28,14 @@ a = Analysis(
     excludes=[],
     noarchive=False,
 )
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz_app = PYZ(a_app.pure, a_app.zipped_data, cipher=block_cipher)
 
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
+exe_app = EXE(
+    pyz_app,
+    a_app.scripts,
+    a_app.binaries,
+    a_app.zipfiles,
+    a_app.datas,
     name="WorkflowAgent",        # имя exe
     debug=False,
     bootloader_ignore_signals=False,

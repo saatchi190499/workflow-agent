@@ -22,7 +22,7 @@ import types
 # 🔹 Remote Import Setup (petex_client + pi_client)
 # ==============================================================
  
-MAIN_SERVER_URL = "http://byteall01:8000/api/module"  # your Django server endpoint
+MAIN_SERVER_URL = "http://btlweb:8000/api/module"  # your Django server endpoint
 API_KEY = "supersecret"  # must match the Django view
  
 class RemoteModuleLoader(importlib.abc.SourceLoader):
