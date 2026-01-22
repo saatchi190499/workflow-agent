@@ -1,0 +1,61 @@
+{"component": 2, "object_type": "WELL", "object_instance": "A1", "object_type_property": "WHP", "value": 55, "date_time": "2026-01-22T14:43", "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A1", "object_type_property": "Choke Position", "value": 59.41, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A1", "object_type_property": "Gas Rate", "value": 8.706, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A1", "object_type_property": "Oil Rate", "value": 2727.54, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A1", "object_type_property": "Slot Pressure", "value": 314.44, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A1", "object_type_property": "WHP", "value": 589.22, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A1", "object_type_property": "WHT", "value": 194.03, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A2", "object_type_property": "Choke Position", "value": 18.31, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A2", "object_type_property": "Gas Rate", "value": 9.998, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A2", "object_type_property": "Oil Rate", "value": 1189.03, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A2", "object_type_property": "Slot Pressure", "value": 341.37, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A2", "object_type_property": "WHP", "value": 902.67, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A2", "object_type_property": "WHT", "value": 100.85, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A3", "object_type_property": "Choke Position", "value": 37.34, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A3", "object_type_property": "Gas Rate", "value": 21.497, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A3", "object_type_property": "Oil Rate", "value": 70.34, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A3", "object_type_property": "Slot Pressure", "value": 483.89, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A3", "object_type_property": "WHP", "value": 1533.18, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A3", "object_type_property": "WHT", "value": 164.12, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A4", "object_type_property": "Choke Position", "value": 22.16, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A4", "object_type_property": "Gas Rate", "value": 2.244, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A4", "object_type_property": "Oil Rate", "value": 2660.1, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A4", "object_type_property": "Slot Pressure", "value": 457.71, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A4", "object_type_property": "WHP", "value": 1560.88, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A4", "object_type_property": "WHT", "value": 120.23, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A5", "object_type_property": "Choke Position", "value": 86.49, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A5", "object_type_property": "Gas Rate", "value": 0.91, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A5", "object_type_property": "Oil Rate", "value": 1626.47, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A5", "object_type_property": "Slot Pressure", "value": 104.2, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A5", "object_type_property": "WHP", "value": 1241.71, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A5", "object_type_property": "WHT", "value": 173.44, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A1", "object_type_property": "Choke Position", "value": 71.09, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A1", "object_type_property": "Gas Rate", "value": 24.552, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A1", "object_type_property": "Oil Rate", "value": 1092.11, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A1", "object_type_property": "Slot Pressure", "value": 682.66, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A1", "object_type_property": "WHP", "value": 1797.74, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A1", "object_type_property": "WHT", "value": 199.37, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A2", "object_type_property": "Choke Position", "value": 54.64, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A2", "object_type_property": "Gas Rate", "value": 6.748, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A2", "object_type_property": "Oil Rate", "value": 1335.32, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A2", "object_type_property": "Slot Pressure", "value": 472.06, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A2", "object_type_property": "WHP", "value": 2404.03, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A2", "object_type_property": "WHT", "value": 82.83, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A3", "object_type_property": "Choke Position", "value": 16.06, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A3", "object_type_property": "Gas Rate", "value": 17.875, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A3", "object_type_property": "Oil Rate", "value": 78.01, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A3", "object_type_property": "Slot Pressure", "value": 724.61, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A3", "object_type_property": "WHP", "value": 698.38, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A3", "object_type_property": "WHT", "value": 155.19, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A4", "object_type_property": "Choke Position", "value": 21.31, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A4", "object_type_property": "Gas Rate", "value": 21.762, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A4", "object_type_property": "Oil Rate", "value": 1458.01, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A4", "object_type_property": "Slot Pressure", "value": 494.04, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A4", "object_type_property": "WHP", "value": 588.54, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A4", "object_type_property": "WHT", "value": 115.4, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A5", "object_type_property": "Choke Position", "value": 45.42, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A5", "object_type_property": "Gas Rate", "value": 23.619, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A5", "object_type_property": "Oil Rate", "value": 1140.23, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A5", "object_type_property": "Slot Pressure", "value": 658.6, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A5", "object_type_property": "WHP", "value": 518.76, "date_time": null, "description": null}
+{"component": 2, "object_type": "WELL", "object_instance": "A5", "object_type_property": "WHT", "value": 174.61, "date_time": null, "description": null}
