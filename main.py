@@ -10,7 +10,7 @@ import os
 import sys
 import types
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import importlib.abc
 import importlib.util
@@ -40,6 +40,7 @@ MAIN_SERVER_URL = os.getenv("WORKFLOW_AGENT_MAIN_SERVER_URL", "http://btlweb:800
 MAIN_SERVER_MODULE_URL = f"{MAIN_SERVER_URL}/module"  # Django integration get_module endpoint
 MAIN_SERVER_WORKFLOW_INPUTS_URL = f"{MAIN_SERVER_URL}/workflow_inputs"
 MAIN_SERVER_TOKEN_URL = f"{MAIN_SERVER_URL}/me/"
+MAIN_SERVER_REFRESH_URL = f"{MAIN_SERVER_URL}/token/refresh/"
 API_KEY = os.getenv("WORKFLOW_AGENT_API_KEY", "supersecret")
 AUTH_TOKEN = os.getenv("WORKFLOW_AGENT_AUTH_TOKEN", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY5MDY1Mzg5LCJpYXQiOjE3Njg5OTIxNzMsImp0aSI6Ijk4ZTQwOWQ5MjhhNjQ2MDFiNzMzZjM4MmZhYWJiNzliIiwidXNlcl9pZCI6MX0.zrG9NXFCiQMpu9tD5Vlsh9jgdKEocy0j3W7j8sPwVMU")
 USERNAME = os.getenv("WORKFLOW_AGENT_USERNAME", "")
@@ -261,20 +262,36 @@ class InternalClient:
         if not value:
             return None
         if isinstance(value, datetime):
-            return value
-        s = str(value)
-        if s.endswith("Z"):
-            s = s[:-1] + "+00:00"
-        try:
-            return datetime.fromisoformat(s)
-        except Exception:
-            return None
+            dt = value
+        else:
+            s = str(value)
+            if s.endswith("Z"):
+                s = s[:-1] + "+00:00"
+            try:
+                dt = datetime.fromisoformat(s)
+            except Exception:
+                return None
+        if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
 
     def _components(self):
         return self._request("/data-sources/Internal/components/")
 
     def _metadata(self):
         return self._request("/object-metadata/")
+
+    def _build_meta_maps(self, meta):
+        type_map = {t.get("id"): t.get("name") for t in meta.get("types", [])}
+        instance_map = {}
+        for _tname, insts in (meta.get("instances") or {}).items():
+            for inst in insts:
+                instance_map[inst.get("id")] = inst.get("name")
+        prop_map = {}
+        for _tname, props in (meta.get("properties") or {}).items():
+            for prop in props:
+                prop_map[prop.get("id")] = prop.get("name")
+        return type_map, instance_map, prop_map
 
     def _resolve_component_ids(self, components):
         comps = self._components()
@@ -451,6 +468,8 @@ class InternalClient:
 
     def get_history(self, components=None, object_type=None, instances=None, properties=None, start=None, end=None):
         records = self.get_records(components=components, object_type=object_type, instances=instances, properties=properties)
+        meta = self._metadata()
+        type_map, instance_map, prop_map = self._build_meta_maps(meta)
         start_dt = self._parse_dt(start)
         end_dt = self._parse_dt(end)
         out = []
@@ -467,8 +486,14 @@ class InternalClient:
                     continue
                 if end_dt and dt and dt > end_dt:
                     continue
+                type_id = rec.get("object_type")
+                instance_id = rec.get("object_instance")
+                prop_id = rec.get("object_type_property")
                 item["component_id"] = comp_id
                 item["main_record_id"] = row_id
+                item["object_type_name"] = type_map.get(type_id, "")
+                item["object_instance_name"] = instance_map.get(instance_id, "")
+                item["object_type_property_name"] = prop_map.get(prop_id, "")
                 out.append(item)
         return out
 
