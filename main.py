@@ -446,6 +446,7 @@ class InternalClient:
     def get_records(self, components=None, object_type=None, instances=None, properties=None):
         comp_ids, comp_by_id = self._resolve_component_ids(components)
         meta = self._metadata()
+        type_map, instance_map, prop_map = self._build_meta_maps(meta)
         type_ids = self._resolve_type_ids(object_type, meta)
         instance_ids = self._resolve_instance_ids(instances, meta)
         property_ids = self._resolve_property_ids(properties, meta)
@@ -462,7 +463,10 @@ class InternalClient:
                 rec["component_id"] = rec.get("component") or comp_id
                 comp = comp_by_id.get(comp_id) or {}
                 if comp:
-                    rec["component_name"] = comp.get("name", "")
+                    rec["component__name"] = comp.get("name", "")
+                rec["object_type__object_type_name"] = type_map.get(rec.get("object_type"), "")
+                rec["object_instance__object_instance_name"] = instance_map.get(rec.get("object_instance"), "")
+                rec["object_type_property__object_type_property_name"] = prop_map.get(rec.get("object_type_property"), "")
                 out.append(rec)
         return out
 
@@ -543,6 +547,18 @@ def _save_workflow_output_local(*, workflow_component_id: int, records, mode: st
     return {"status": "saved_local", "path": str(path), "count": len(items or [])}
 
 
+def _save_workflow_output_db(*, workflow_component_id: int, records, component_id=None):
+    """Fallback DB saver for workflow-agent.
+
+    The Django backend currently has no dedicated API to persist workflow outputs,
+    so we fall back to local JSONL persistence.
+    """
+    result = _save_workflow_output_local(workflow_component_id=int(workflow_component_id), records=records, mode="append")
+    result["status"] = "saved_local_db_fallback"
+    result["component_id"] = component_id
+    return result
+
+
 # ==============================================================
 # 🔹 Error Handler
 # ==============================================================
@@ -579,11 +595,7 @@ async def run_cell(request: Request):
                     workflow_component_id=int(workflow_component_id)
                 )
                 GLOBAL_CONTEXT["workflow_save_output"] = lambda records, mode="append", save_to=None, component_id=None: (
-                    _save_workflow_output_db(
-                        workflow_component_id=int(workflow_component_id), records=records, component_id=component_id
-                    )
-                    if (save_to == "db" or OUTPUT_MODE == "db")
-                    else _save_workflow_output_local(
+                    _save_workflow_output_local(
                         workflow_component_id=int(workflow_component_id), records=records, mode=mode
                     )
                 )
@@ -634,11 +646,7 @@ async def run_all(request: Request):
                     workflow_component_id=int(workflow_component_id)
                 )
                 GLOBAL_CONTEXT["workflow_save_output"] = lambda records, mode="append", save_to=None, component_id=None: (
-                    _save_workflow_output_db(
-                        workflow_component_id=int(workflow_component_id), records=records, component_id=component_id
-                    )
-                    if (save_to == "db" or OUTPUT_MODE == "db")
-                    else _save_workflow_output_local(
+                    _save_workflow_output_local(
                         workflow_component_id=int(workflow_component_id), records=records, mode=mode
                     )
                 )
