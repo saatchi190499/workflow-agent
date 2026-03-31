@@ -1,0 +1,4 @@
+﻿pyinstaller
+nuitka
+ordered-set
+zstandard

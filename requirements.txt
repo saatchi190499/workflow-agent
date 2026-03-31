@@ -1,8 +1,1 @@
-fastapi
-uvicorn
-pydantic
-pywin32
-numpy
-pandas
-requests
-requests_kerberos
+﻿-r requirements-worker.txt

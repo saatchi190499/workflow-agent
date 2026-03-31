@@ -1,0 +1,10 @@
+﻿fastapi
+uvicorn
+pydantic
+pymssql
+psycopg2-binary
+pywin32
+numpy
+pandas
+requests
+requests_kerberos
