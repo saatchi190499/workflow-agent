@@ -1,3 +1,9 @@
-venv/
+﻿venv/
+.venv/
 __pycache__/
 workflow_outputs/
+logs/
+service.env
+build/
+dist/
+*.spec

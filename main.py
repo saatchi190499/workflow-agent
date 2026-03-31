@@ -1,4 +1,4 @@
-"""
+﻿"""
 Local Workflow Agent (FastAPI)
 
 Runs workflow cells locally, but fetches workflow inputs from the Django server
@@ -33,20 +33,29 @@ def _apply_request_auth(request: Request):
         internal.refresh_token = refresh
 
 # ==============================================================
-# 🔹 Remote Import Setup (petex_client + pi_client)
+# ðŸ”¹ Remote Import Setup (petex_client + pi_client)
 # ==============================================================
 
 MAIN_SERVER_URL = os.getenv("WORKFLOW_AGENT_MAIN_SERVER_URL", "http://btlweb:8000/api")
 MAIN_SERVER_MODULE_URL = f"{MAIN_SERVER_URL}/module"  # Django integration get_module endpoint
 MAIN_SERVER_WORKFLOW_INPUTS_URL = f"{MAIN_SERVER_URL}/workflow_inputs"
-MAIN_SERVER_TOKEN_URL = f"{MAIN_SERVER_URL}/me/"
-MAIN_SERVER_REFRESH_URL = f"{MAIN_SERVER_URL}/token/refresh/"
+MAIN_SERVER_LOGIN_URL = os.getenv("WORKFLOW_AGENT_LOGIN_URL", f"{MAIN_SERVER_URL}/login/")
+MAIN_SERVER_ME_URL = os.getenv("WORKFLOW_AGENT_ME_URL", f"{MAIN_SERVER_URL}/me/")
+MAIN_SERVER_REFRESH_URL = os.getenv("WORKFLOW_AGENT_REFRESH_URL", f"{MAIN_SERVER_URL}/token/refresh/")
 API_KEY = os.getenv("WORKFLOW_AGENT_API_KEY", "supersecret")
-AUTH_TOKEN = os.getenv("WORKFLOW_AGENT_AUTH_TOKEN", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY5MDY1Mzg5LCJpYXQiOjE3Njg5OTIxNzMsImp0aSI6Ijk4ZTQwOWQ5MjhhNjQ2MDFiNzMzZjM4MmZhYWJiNzliIiwidXNlcl9pZCI6MX0.zrG9NXFCiQMpu9tD5Vlsh9jgdKEocy0j3W7j8sPwVMU")
+AUTH_TOKEN = os.getenv("WORKFLOW_AGENT_AUTH_TOKEN", "")
 USERNAME = os.getenv("WORKFLOW_AGENT_USERNAME", "")
 PASSWORD = os.getenv("WORKFLOW_AGENT_PASSWORD", "")
 REFRESH_TOKEN = os.getenv("WORKFLOW_AGENT_REFRESH_TOKEN", "")
 OUTPUT_MODE = os.getenv("WORKFLOW_AGENT_OUTPUT_MODE", "local")
+SSL_VERIFY = os.getenv("WORKFLOW_AGENT_SSL_VERIFY", "1").lower() not in ("0", "false", "no")
+
+if not SSL_VERIFY:
+    try:
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    except Exception:
+        pass
 
 DISABLE_REMOTE_IMPORTS = os.getenv("WORKFLOW_AGENT_DISABLE_REMOTE_IMPORTS", "").lower() in (
     "1",
@@ -73,11 +82,11 @@ class RemoteModuleLoader(importlib.abc.SourceLoader):
         module_path = path.replace(".", "/")
         url = f"{MAIN_SERVER_MODULE_URL}/{module_path}"
         headers = {"X-API-Key": API_KEY}
-        resp = requests.get(url, headers=headers, timeout=30)
+        resp = requests.get(url, headers=headers, timeout=30, verify=SSL_VERIFY)
 
         if resp.status_code == 404 and "/" not in module_path.split("/")[-1]:
             url = f"{MAIN_SERVER_MODULE_URL}/{module_path}/__init__.py"
-            resp = requests.get(url, headers=headers, timeout=30)
+            resp = requests.get(url, headers=headers, timeout=30, verify=SSL_VERIFY)
 
         if resp.status_code != 200:
             raise ImportError(f"Failed to fetch: {url} ({resp.status_code})")
@@ -103,7 +112,7 @@ if not DISABLE_REMOTE_IMPORTS:
     sys.meta_path.insert(0, RemoteModuleFinder())
 
 # ==============================================================
-# 🔹 Import Petex & PI limited functions
+# ðŸ”¹ Import Petex & PI limited functions
 # ==============================================================
 
 PETEX_IMPORT_ERROR = None
@@ -143,7 +152,7 @@ except Exception as e:
     pi_series = _unavailable("pi.series", e)
 
 # ==============================================================
-# 🔹 FastAPI Setup
+# ðŸ”¹ FastAPI Setup
 # ==============================================================
 
 app = FastAPI(title="Workflow Agent (Petex + PI)", version="1.0")
@@ -157,7 +166,7 @@ app.add_middleware(
 )
 
 # ==============================================================
-# 🔹 Global Context
+# ðŸ”¹ Global Context
 # ==============================================================
 
 
@@ -181,7 +190,7 @@ def _fetch_workflow_inputs(*, workflow_component_id: int):
 
     url = f"{MAIN_SERVER_WORKFLOW_INPUTS_URL}/{int(workflow_component_id)}/"
     headers = {"X-API-Key": API_KEY}
-    resp = requests.get(url, headers=headers, timeout=60)
+    resp = requests.get(url, headers=headers, timeout=60, verify=SSL_VERIFY)
     if resp.status_code != 200:
         raise RuntimeError(f"Failed to fetch workflow inputs ({resp.status_code}): {resp.text}")
     return resp.json()
@@ -203,14 +212,17 @@ class InternalClient:
             import requests
         except ImportError as e:
             raise ImportError("requests is required for token refresh") from e
-        resp = requests.post(MAIN_SERVER_REFRESH_URL, json={"refresh": self.refresh_token}, timeout=30)
+        resp = requests.post(MAIN_SERVER_REFRESH_URL, json={"refresh": self.refresh_token}, timeout=30, verify=SSL_VERIFY)
         if resp.status_code != 200:
             return False
         data = resp.json()
-        token = data.get("access") or data.get("token")
+        token = data.get("access") or data.get("token") or data.get("access_token")
         if not token:
             return False
         self.auth_token = token
+        new_refresh = data.get("refresh") or data.get("refresh_token")
+        if new_refresh:
+            self.refresh_token = new_refresh
         return True
 
     def _ensure_token(self):
@@ -225,14 +237,17 @@ class InternalClient:
             import requests
         except ImportError as e:
             raise ImportError("requests is required for InternalClient auth") from e
-        resp = requests.post(MAIN_SERVER_TOKEN_URL, json={"username": self.username, "password": self.password}, timeout=30)
+        resp = requests.post(MAIN_SERVER_LOGIN_URL, json={"username": self.username, "password": self.password}, timeout=30, verify=SSL_VERIFY)
         if resp.status_code != 200:
             raise RuntimeError(f"Auth token request failed ({resp.status_code}): {resp.text}")
         data = resp.json()
-        token = data.get("access") or data.get("token")
+        token = data.get("access") or data.get("token") or data.get("access_token")
         if not token:
             raise RuntimeError("Auth token missing in response")
         self.auth_token = token
+        new_refresh = data.get("refresh") or data.get("refresh_token")
+        if new_refresh:
+            self.refresh_token = new_refresh
 
     def _headers(self):
         self._ensure_token()
@@ -251,9 +266,9 @@ class InternalClient:
         except ImportError as e:
             raise ImportError("requests is required for InternalClient") from e
         url = f"{self.base_url}{path}"
-        resp = requests.get(url, headers=self._headers(), params=params, timeout=60)
+        resp = requests.get(url, headers=self._headers(), params=params, timeout=60, verify=SSL_VERIFY)
         if resp.status_code == 401 and self._refresh_token():
-            resp = requests.get(url, headers=self._headers(), params=params, timeout=60)
+            resp = requests.get(url, headers=self._headers(), params=params, timeout=60, verify=SSL_VERIFY)
         if resp.status_code != 200:
             raise RuntimeError(f"Internal API failed ({resp.status_code}): {resp.text}")
         return resp.json()
@@ -516,7 +531,7 @@ GLOBAL_CONTEXT = {
 }
 
 # ==============================================================
-# 🔹 Local workflow output persistence (testing only)
+# ðŸ”¹ Local workflow output persistence (testing only)
 # ==============================================================
 
 WORKFLOW_AGENT_OUTPUT_DIR = Path(os.getenv("WORKFLOW_AGENT_OUTPUT_DIR", "./workflow_outputs")).resolve()
@@ -560,7 +575,7 @@ def _save_workflow_output_db(*, workflow_component_id: int, records, component_i
 
 
 # ==============================================================
-# 🔹 Error Handler
+# ðŸ”¹ Error Handler
 # ==============================================================
 
 
@@ -570,7 +585,7 @@ async def all_exceptions_handler(request: Request, exc: Exception):
 
 
 # ==============================================================
-# 🔹 Execute Code (Single Cell)
+# ðŸ”¹ Execute Code (Single Cell)
 # ==============================================================
 
 
@@ -678,7 +693,7 @@ async def run_all(request: Request):
 
 
 # ==============================================================
-# 🔹 Variable Management (for NotebookEditor UI)
+# ðŸ”¹ Variable Management (for NotebookEditor UI)
 # ==============================================================
 
 
@@ -749,7 +764,7 @@ async def set_var(request: Request):
 
 
 # ==============================================================
-# 🔹 Local outputs (optional convenience endpoints)
+# ðŸ”¹ Local outputs (optional convenience endpoints)
 # ==============================================================
 
 
@@ -771,3 +786,9 @@ async def get_workflow_outputs(workflow_component_id: int):
                 continue
 
     return JSONResponse({"records": records, "path": str(path)})
+
+
+
+
+
+
