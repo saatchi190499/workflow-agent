@@ -1,4 +1,4 @@
-﻿"""
+"""
 Local Workflow Agent (FastAPI)
 
 Runs workflow cells locally, but fetches workflow inputs from the Django server
@@ -33,7 +33,7 @@ def _apply_request_auth(request: Request):
         internal.refresh_token = refresh
 
 # ==============================================================
-# ðŸ”¹ Remote Import Setup (petex_client + pi_client)
+# Ã°Å¸â€Â¹ Remote Import Setup (petex_client + pi_client)
 # ==============================================================
 
 MAIN_SERVER_URL = os.getenv("WORKFLOW_AGENT_MAIN_SERVER_URL", "http://btlweb:8000/api")
@@ -111,8 +111,25 @@ class RemoteModuleFinder(importlib.abc.MetaPathFinder):
 if not DISABLE_REMOTE_IMPORTS:
     sys.meta_path.insert(0, RemoteModuleFinder())
 
+
+def _resolve_teams_client_class():
+    """Prefer centrally managed Teams client from main backend, with local fallback."""
+    if not DISABLE_REMOTE_IMPORTS:
+        try:
+            from apiapp.utils.workflow_runtime_shared import TeamsClient as RemoteTeamsClient
+
+            return RemoteTeamsClient
+        except Exception:
+            pass
+
+    from workflow_shared import TeamsClient as LocalTeamsClient
+
+    return LocalTeamsClient
+
+
+TeamsClient = _resolve_teams_client_class()
 # ==============================================================
-# ðŸ”¹ Import Petex & PI limited functions
+# Ã°Å¸â€Â¹ Import Petex & PI limited functions
 # ==============================================================
 
 PETEX_IMPORT_ERROR = None
@@ -152,8 +169,12 @@ except Exception as e:
     pi_series = _unavailable("pi.series", e)
 
 # ==============================================================
-# ðŸ”¹ FastAPI Setup
+# Ã°Å¸â€Â¹ FastAPI Setup
 # ==============================================================
+
+
+
+teams = TeamsClient(ssl_verify=SSL_VERIFY)
 
 app = FastAPI(title="Workflow Agent (Petex + PI)", version="1.0")
 
@@ -166,7 +187,7 @@ app.add_middleware(
 )
 
 # ==============================================================
-# ðŸ”¹ Global Context
+# Ã°Å¸â€Â¹ Global Context
 # ==============================================================
 
 
@@ -518,20 +539,86 @@ class InternalClient:
 
 internal = InternalClient(MAIN_SERVER_URL, api_key=API_KEY, auth_token=AUTH_TOKEN, username=USERNAME, password=PASSWORD, refresh_token=REFRESH_TOKEN)
 
-GLOBAL_CONTEXT = {
-    "gap": gap,
-    "gap_tools": gap_tools,
-    "resolve": resolve,
-    "PetexServer": PetexServer,
-    "pi": types.SimpleNamespace(
-        value=pi_value,
-        series=pi_series,
-    ),
-    "internal": internal,
+
+
+HIDDEN_TIP_NAMES = {
+    "internal",
+    "PetexServer",
+    "srv",
+    "workflow_component_id",
+    "workflow_load_inputs",
+    "workflow_save_output",
+    "workflow_last_output_path",
+    "workflow_last_output_count",
 }
 
+
+def _build_base_context():
+    return {
+        "gap": gap,
+        "gap_tools": gap_tools,
+        "resolve": resolve,
+        "PetexServer": PetexServer,
+        "pi": types.SimpleNamespace(
+            value=pi_value,
+            series=pi_series,
+        ),
+        "teams": teams,
+        "internal": internal,
+    }
+
+
+def _set_workflow_runtime_hooks(workflow_component_id):
+    if workflow_component_id is None:
+        return
+
+    cid = int(workflow_component_id)
+    GLOBAL_CONTEXT["workflow_component_id"] = cid
+    GLOBAL_CONTEXT["workflow_load_inputs"] = (lambda _cid=cid: _fetch_workflow_inputs(workflow_component_id=_cid))
+    GLOBAL_CONTEXT["workflow_save_output"] = (
+        lambda records, mode="append", save_to=None, component_id=None, _cid=cid: (
+            _save_workflow_output_local(workflow_component_id=_cid, records=records, mode=mode)
+        )
+    )
+
+
+def _snapshot_variables(preview_chars: int = 60):
+    return {
+        k: {"type": type(v).__name__, "preview": str(v)[:preview_chars]}
+        for k, v in GLOBAL_CONTEXT.items()
+        if not k.startswith("__")
+        and not callable(v)
+        and not isinstance(v, type)
+        and k not in HIDDEN_TIP_NAMES
+    }
+
+
+def _execute_code_snippets(snippets, *, use_petex: bool, workflow_component_id=None):
+    stdout_buf, stderr_buf = io.StringIO(), io.StringIO()
+
+    try:
+        with _petex_server(use_petex) as srv:
+            if srv is not None:
+                GLOBAL_CONTEXT["srv"] = srv
+
+            if workflow_component_id:
+                _set_workflow_runtime_hooks(workflow_component_id)
+
+            with redirect_stdout(stdout_buf), redirect_stderr(stderr_buf):
+                for snippet in snippets:
+                    exec(snippet, GLOBAL_CONTEXT)
+    except Exception as e:
+        stderr_buf.write(f"{type(e).__name__}: {e}\n")
+    finally:
+        GLOBAL_CONTEXT.pop("srv", None)
+
+    return stdout_buf.getvalue(), stderr_buf.getvalue(), _snapshot_variables(60)
+
+
+GLOBAL_CONTEXT = _build_base_context()
+
 # ==============================================================
-# ðŸ”¹ Local workflow output persistence (testing only)
+# Ã°Å¸â€Â¹ Local workflow output persistence (testing only)
 # ==============================================================
 
 WORKFLOW_AGENT_OUTPUT_DIR = Path(os.getenv("WORKFLOW_AGENT_OUTPUT_DIR", "./workflow_outputs")).resolve()
@@ -575,7 +662,7 @@ def _save_workflow_output_db(*, workflow_component_id: int, records, component_i
 
 
 # ==============================================================
-# ðŸ”¹ Error Handler
+# Ã°Å¸â€Â¹ Error Handler
 # ==============================================================
 
 
@@ -585,7 +672,7 @@ async def all_exceptions_handler(request: Request, exc: Exception):
 
 
 # ==============================================================
-# ðŸ”¹ Execute Code (Single Cell)
+# Ã°Å¸â€Â¹ Execute Code (Single Cell)
 # ==============================================================
 
 
@@ -597,45 +684,17 @@ async def run_cell(request: Request):
     workflow_component_id = data.get("workflow_component_id")
     _apply_request_auth(request)
 
-    stdout_buf, stderr_buf = io.StringIO(), io.StringIO()
-
-    try:
-        with _petex_server(use_petex) as srv:
-            if srv is not None:
-                GLOBAL_CONTEXT["srv"] = srv
-
-            if workflow_component_id:
-                GLOBAL_CONTEXT["workflow_component_id"] = int(workflow_component_id)
-                GLOBAL_CONTEXT["workflow_load_inputs"] = lambda: _fetch_workflow_inputs(
-                    workflow_component_id=int(workflow_component_id)
-                )
-                GLOBAL_CONTEXT["workflow_save_output"] = lambda records, mode="append", save_to=None, component_id=None: (
-                    _save_workflow_output_local(
-                        workflow_component_id=int(workflow_component_id), records=records, mode=mode
-                    )
-                )
-
-            with redirect_stdout(stdout_buf), redirect_stderr(stderr_buf):
-                exec(code, GLOBAL_CONTEXT)
-    except Exception as e:
-        stderr_buf.write(f"{type(e).__name__}: {e}\n")
-    finally:
-        GLOBAL_CONTEXT.pop("srv", None)
-
-    vars_snapshot = {
-        k: {"type": type(v).__name__, "preview": str(v)[:60]}
-        for k, v in GLOBAL_CONTEXT.items()
-        if not k.startswith("__")
-        and not callable(v)
-        and not isinstance(v, type)
-        and k not in {"gap", "resolve", "PetexServer", "srv"}
-    }
+    stdout, stderr, variables = _execute_code_snippets(
+        [code],
+        use_petex=use_petex,
+        workflow_component_id=workflow_component_id,
+    )
 
     return JSONResponse(
         {
-            "stdout": stdout_buf.getvalue(),
-            "stderr": stderr_buf.getvalue(),
-            "variables": vars_snapshot,
+            "stdout": stdout,
+            "stderr": stderr,
+            "variables": variables,
         }
     )
 
@@ -648,88 +707,37 @@ async def run_all(request: Request):
     workflow_component_id = data.get("workflow_component_id")
     _apply_request_auth(request)
 
-    stdout_buf, stderr_buf = io.StringIO(), io.StringIO()
-
-    try:
-        with _petex_server(use_petex) as srv:
-            if srv is not None:
-                GLOBAL_CONTEXT["srv"] = srv
-
-            if workflow_component_id:
-                GLOBAL_CONTEXT["workflow_component_id"] = int(workflow_component_id)
-                GLOBAL_CONTEXT["workflow_load_inputs"] = lambda: _fetch_workflow_inputs(
-                    workflow_component_id=int(workflow_component_id)
-                )
-                GLOBAL_CONTEXT["workflow_save_output"] = lambda records, mode="append", save_to=None, component_id=None: (
-                    _save_workflow_output_local(
-                        workflow_component_id=int(workflow_component_id), records=records, mode=mode
-                    )
-                )
-
-            with redirect_stdout(stdout_buf), redirect_stderr(stderr_buf):
-                for code in cells:
-                    exec(code, GLOBAL_CONTEXT)
-    except Exception as e:
-        stderr_buf.write(f"{type(e).__name__}: {e}\n")
-    finally:
-        GLOBAL_CONTEXT.pop("srv", None)
-
-    vars_snapshot = {
-        k: {"type": type(v).__name__, "preview": str(v)[:60]}
-        for k, v in GLOBAL_CONTEXT.items()
-        if not k.startswith("__")
-        and not callable(v)
-        and not isinstance(v, type)
-        and k not in {"gap", "resolve", "PetexServer", "srv"}
-    }
+    snippets = cells if isinstance(cells, list) else ([cells] if cells else [])
+    stdout, stderr, variables = _execute_code_snippets(
+        snippets,
+        use_petex=use_petex,
+        workflow_component_id=workflow_component_id,
+    )
 
     return JSONResponse(
         {
-            "stdout": stdout_buf.getvalue(),
-            "stderr": stderr_buf.getvalue(),
-            "variables": vars_snapshot,
+            "stdout": stdout,
+            "stderr": stderr,
+            "variables": variables,
         }
     )
 
 
 # ==============================================================
-# ðŸ”¹ Variable Management (for NotebookEditor UI)
+# Variable Management (for NotebookEditor UI)
 # ==============================================================
 
 
 @app.get("/variables/")
 async def list_variables():
-    reserved = {"gap", "gap_tools", "resolve", "PetexServer", "srv"}
-    result = {}
-    for k, v in GLOBAL_CONTEXT.items():
-        if k.startswith("__") or k in reserved or callable(v) or isinstance(v, type):
-            continue
-        try:
-            preview = str(v)
-            if len(preview) > 80:
-                preview = preview[:77] + "..."
-            result[k] = {"type": type(v).__name__, "preview": preview}
-        except Exception:
-            result[k] = {"type": "unknown", "preview": ""}
+    result = _snapshot_variables(preview_chars=80)
     return JSONResponse(result)
 
 
 @app.post("/reset_context/")
 async def reset_context():
     GLOBAL_CONTEXT.clear()
-    GLOBAL_CONTEXT.update(
-        {
-            "gap": gap,
-            "gap_tools": gap_tools,
-            "resolve": resolve,
-            "PetexServer": PetexServer,
-            "pi": types.SimpleNamespace(
-                value=pi_value,
-                series=pi_series,
-            ),
-            "internal": internal,
-        }
-    )
+    GLOBAL_CONTEXT.update(_build_base_context())
     return JSONResponse({"status": "reset"})
 
 
@@ -764,7 +772,7 @@ async def set_var(request: Request):
 
 
 # ==============================================================
-# ðŸ”¹ Local outputs (optional convenience endpoints)
+# Ã°Å¸â€Â¹ Local outputs (optional convenience endpoints)
 # ==============================================================
 
 
@@ -786,6 +794,7 @@ async def get_workflow_outputs(workflow_component_id: int):
                 continue
 
     return JSONResponse({"records": records, "path": str(path)})
+
 
 
 

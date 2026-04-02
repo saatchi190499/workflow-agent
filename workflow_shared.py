@@ -8,9 +8,15 @@ Single source of truth for:
 - OutputsTable/InputsTable structure helpers
 - outputs_config componentId resolution
 - converting OutputsTable -> records
+- shared Teams alert client for workflow runtime
 """
 
 from __future__ import annotations
+
+import json
+import ssl
+import urllib.error
+import urllib.request
 
 
 def _norm(s) -> str:
@@ -205,3 +211,75 @@ def records_from_output_table(
                 )
 
     return records
+
+
+def _teams_text(msg) -> str:
+    if msg is None:
+        return ""
+    if isinstance(msg, str):
+        return msg
+    try:
+        return json.dumps(msg, ensure_ascii=False, indent=2)
+    except Exception:
+        return str(msg)
+
+
+def _teams_payload(msg, title: str = "Workflow Alert") -> dict:
+    return {
+        "type": "message",
+        "attachments": [
+            {
+                "contentType": "application/vnd.microsoft.card.adaptive",
+                "content": {
+                    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                    "type": "AdaptiveCard",
+                    "version": "1.4",
+                    "body": [
+                        {"type": "TextBlock", "text": str(title), "weight": "Bolder", "size": "Medium", "wrap": True},
+                        {"type": "TextBlock", "text": _teams_text(msg), "wrap": True},
+                    ],
+                },
+            }
+        ],
+    }
+
+
+class TeamsClient:
+    def __init__(self, ssl_verify: bool = True):
+        self.ssl_verify = bool(ssl_verify)
+
+    def send_alert(self, web_hook, msg, title: str = "Workflow Alert", timeout: float = 15, raise_on_error: bool = True):
+        url = str(web_hook or "").strip()
+        if not url:
+            raise ValueError("web_hook is required")
+
+        payload = _teams_payload(msg, title=title)
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=body,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+            method="POST",
+        )
+
+        ssl_context = None if self.ssl_verify else ssl._create_unverified_context()
+
+        try:
+            with urllib.request.urlopen(req, timeout=float(timeout), context=ssl_context) as resp:
+                status = int(getattr(resp, "status", 200) or 200)
+                resp_body = resp.read().decode("utf-8", "ignore")
+        except urllib.error.HTTPError as exc:
+            status = int(getattr(exc, "code", 500) or 500)
+            resp_body = (exc.read() or b"").decode("utf-8", "ignore")
+            if raise_on_error:
+                raise RuntimeError(f"Failed to send Teams alert: HTTP {status}: {resp_body}") from exc
+            return {"ok": False, "status": status, "body": resp_body, "error": resp_body}
+        except Exception as exc:
+            if raise_on_error:
+                raise RuntimeError(f"Failed to send Teams alert: {exc}") from exc
+            return {"ok": False, "status": None, "body": "", "error": str(exc)}
+
+        ok = 200 <= status < 300
+        if (not ok) and raise_on_error:
+            raise RuntimeError(f"Failed to send Teams alert: HTTP {status}: {resp_body}")
+        return {"ok": ok, "status": status, "body": resp_body, "error": None if ok else resp_body}

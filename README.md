@@ -1,5 +1,9 @@
 ﻿# Workflow Agent (EXE + Setup Installer)
 
+## Extension Guide
+
+- See CLIENTS_AND_ROUTES.md for where to add new workflow runtime clients and FastAPI routes.
+
 ## Project Structure
 
 - `scripts\build\build_release.ps1`: builds `WorkflowAgentRunner.exe`.
@@ -62,3 +66,4 @@ Use Windows Apps/Programs uninstall entry, or run:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\service\uninstall_exe_service.ps1 -RemoveFiles
 ```
+
